@@ -2,6 +2,8 @@ import re
 import requests
 from bs4 import BeautifulSoup
 import rsa
+import lxml
+import time  # 导入time模块
 
 baseUrl = "http://factordb.com/"
 
@@ -18,6 +20,10 @@ def n_to_primes(n):
                 cells = row.findAll("td")
                 mylist.append(str(cells))
     data = mylist[3]
+    if len(mylist) >= 4:
+        data = mylist[3]
+    else:
+        print("Error: mylist has fewer than 4 elements.")
     data = data.split(",")
     soup2 = BeautifulSoup(data[0],"lxml")
     for row in soup2.findAll("td"):
@@ -37,14 +43,21 @@ def get_prime(p):
     soup = BeautifulSoup(html,"lxml")
     try:
         value = soup.find('input', {'name': 'query'}).get('value')
-        return value
+        # Check if the value can be converted to an integer
+        try:
+            int(value)
+            return value
+        except ValueError:
+            print(f"Error: Unable to convert '{value}' to an integer.")
+            return None
     except:
         print("Fail")
+        return None
 
 def recover_key(p, q, e, output_file):
     n = p * q
     phi = (p -1)*(q-1)
-    d = rsa.key.inverse(e, phi)
+    d = rsa.common.inverse(e, phi)
     priv_key = rsa.PrivateKey(n, e, d, p, q)
     key = priv_key.save_pkcs1().decode()
 
@@ -55,9 +68,22 @@ def recover_key(p, q, e, output_file):
             f.write(key)
 
 # Example usage:
-n = "1234567890"
-primes_info = n_to_primes(n)
-p = int(get_prime(primes_info[0][1]))
-q = int(get_prime(primes_info[0][2]))
-e = 65537
-recover_key(p, q, e, "private_key.pem")
+start_time = time.time()  # 开始计时
+numbers = [str(i) for i in range(1, 101)]  # List of 100 numbers
+for n in numbers:
+    primes_info = n_to_primes(n)
+    prime_p = get_prime(primes_info[0][1])
+    prime_q = get_prime(primes_info[0][2])
+    if prime_p is None or prime_q is None:
+        print(f"Error: Unable to retrieve prime factors for {n}.")
+        continue
+    if prime_p == prime_q:
+        print(f"Error: The prime factors for {n} are not distinct.")
+        continue
+    p = int(prime_p)
+    q = int(prime_q)
+    e = 65537
+    print(f"Private key for {n}:")
+    recover_key(p, q, e, None)
+end_time = time.time()  # 结束计时
+print(f"Execution time: {end_time - start_time} seconds")  # 打印执行时间
