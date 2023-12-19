@@ -1,0 +1,63 @@
+import random
+
+QUBIT_0 = 0
+QUBIT_1 = 1
+
+class Qubit:
+    def __init__(self):
+        self.value = random.randint(0, 1)
+        self.basis = random.randint(0, 1)
+
+class QuantumChannel:
+    def __init__(self, qubit):
+        self.qubit = qubit
+        self.isEavesdropped = False
+
+def measureQubit(qubit, basis):
+    if qubit.basis == basis:
+        return qubit.value
+    else:
+        # Measurement in the wrong basis, introduce an error
+        qubit.value = random.randint(0, 1)
+        return qubit.value
+
+def eavesdrop(channel):
+    channel.isEavesdropped = True
+    # Eve has a 75% chance to guess the correct basis
+    if random.random() < 0.75:
+        channel.qubit.value = measureQubit(channel.qubit, channel.qubit.basis)
+
+def main():
+    random.seed()
+
+    # Alice prepares qubits
+    aliceQubits = [Qubit() for _ in range(1000)]
+
+    # Alice sends qubits to Bob through a quantum channel
+    channelToBob = [QuantumChannel(qubit) for qubit in aliceQubits]
+
+    # Eve, the eavesdropper, attempts to intercept the qubits
+    for channel in channelToBob:
+        eavesdrop(channel)
+
+    # Bob measures the qubits
+    bobResults = [measureQubit(channel.qubit, channel.qubit.basis) for channel in channelToBob]
+
+    # Alice and Bob extract the shared key
+    print("Shared Key: ", end="")
+    successful_measurements = 0
+    total_measurements = 0
+    for i in range(1000):
+        if aliceQubits[i].basis == channelToBob[i].qubit.basis:
+            print(bobResults[i], end=" ")
+            total_measurements += 1
+            if aliceQubits[i].value == bobResults[i]:
+                successful_measurements += 1
+    print()
+
+    # Calculate and print the success rate
+    success_rate = successful_measurements / total_measurements
+    print(f"Success Rate: {success_rate * 100}%")
+
+if __name__ == "__main__":
+    main()
